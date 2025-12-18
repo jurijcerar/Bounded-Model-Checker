@@ -1,0 +1,24 @@
+MODULE main
+VAR
+    d1 : {left,middle,right};
+    d2 : {left,middle,right};
+    d3 : {left,middle,right};
+    d4 : {left,middle,right};
+    move : {m1, m2, m3, m4};
+
+INIT d1 = left & d2 = left & d3 = left & d4 = left
+
+TRANS move = m1 | next(d1) = d1
+TRANS move = m2 | next(d2) = d2
+TRANS move = m3 | next(d3) = d3
+TRANS move = m4 | next(d4) = d4
+
+INVAR !(move = m1 & d1 in {d2, d3, d4})
+INVAR !(move = m2 & d2 in {d3, d4})
+INVAR !(move = m3 & d3 = d4)
+
+TRANS !(move = m1 & next(d1) in {d2, d3, d4})
+TRANS !(move = m2 & next(d2) in {d3, d4})
+TRANS !(move = m3 & next(d3) = d4)
+
+LTLSPEC !F (d1 = right & d2 = right & d3 = right & d4 = right)

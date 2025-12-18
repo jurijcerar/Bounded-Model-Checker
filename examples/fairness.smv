@@ -1,0 +1,27 @@
+MODULE main
+VAR
+  semaphore : boolean;
+  proc1 : {idle, entering, critical, exiting};
+  proc2 : {idle, entering, critical, exiting};
+INIT semaphore = FALSE & proc1 = idle & proc2 = idle
+TRANS proc1 = idle -> next(proc1) in {idle, entering}
+TRANS proc2 = idle -> next(proc2) in {idle, entering}
+TRANS proc1 = entering & semaphore -> next(proc1) = entering
+TRANS proc2 = entering & semaphore -> next(proc2) = entering
+TRANS proc1 = entering & !semaphore -> next(proc1) = critical
+TRANS proc2 = entering & !semaphore -> next(proc2) = critical
+TRANS proc1 = critical -> next(proc1) in {critical, exiting}
+TRANS proc2 = critical -> next(proc2) in {critical, exiting}
+TRANS proc1 = exiting -> next(proc1) = idle
+TRANS proc2 = exiting -> next(proc2) = idle
+TRANS proc1 = entering | proc2 = entering -> next(semaphore) = TRUE
+TRANS proc1 = exiting | proc2 = exiting -> next(semaphore) = FALSE
+TRANS proc1 != entering &
+      proc2 != entering &
+      proc1 != exiting &
+      proc2 != exiting -> next(semaphore) = semaphore
+
+FAIRNESS proc1 = critical
+FAIRNESS proc2 = critical
+LTLSPEC G !(proc1 = critical & proc2 = critical)
+LTLSPEC G (proc2 = entering -> F proc2 = critical)

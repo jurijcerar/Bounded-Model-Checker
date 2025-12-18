@@ -1,0 +1,8 @@
+MODULE main
+VAR
+    request : boolean;
+    state : {ready, busy};
+INIT state = ready
+TRANS (state = ready & request) -> next(state) = busy
+LTLSPEC G (request -> F state = busy)
+LTLSPEC G (request -> X F state = busy)

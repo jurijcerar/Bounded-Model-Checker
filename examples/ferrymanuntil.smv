@@ -1,0 +1,36 @@
+MODULE main
+VAR
+    farmer : {left, right};
+    wolf : {left, right};
+    goat : {left, right};
+    cabbage : {left, right};
+    move : {w, g, c, none};
+
+INIT farmer = left
+INIT wolf = left
+INIT goat = left
+INIT cabbage = left
+
+TRANS next(farmer) != farmer
+
+TRANS move = w | next(wolf) = wolf
+TRANS move = g | next(goat) = goat
+TRANS move = c | next(cabbage) = cabbage
+
+TRANS move = w -> next(wolf) != wolf
+TRANS move = g -> next(goat) != goat
+TRANS move = c -> next(cabbage) != cabbage
+
+INVAR move = w -> wolf = farmer
+INVAR move = g -> goat = farmer
+INVAR move = c -> cabbage = farmer
+
+LTLSPEC ! ((
+    (wolf = goat -> wolf = farmer) &
+    (goat = cabbage -> goat = farmer)
+) U (
+    farmer = right &
+    wolf = right &
+    goat = right & 
+    cabbage = right
+))

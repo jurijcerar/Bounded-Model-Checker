@@ -1,0 +1,6 @@
+MODULE main
+VAR y : 0 .. 15;
+INIT y = 0
+TRANS y = 7 -> next(y) = 0
+TRANS y != 7 -> next(y) = ((y+1) mod 16)
+LTLSPEC G (y=4 -> X y=6)

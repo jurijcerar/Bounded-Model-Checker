@@ -1,0 +1,68 @@
+%import common.WS
+%ignore WS
+
+COMMENT : "--" /.*?/ "\n"
+%ignore COMMENT
+
+start : "MODULE" "main" (statement)*
+statement : 
+    | "VAR" var_list
+    | init_constraint
+    | trans_constraint
+    | invar_constraint
+    | ltlspec
+
+var_list : 
+    | IDENTIFIER ":" type_specifier ";"
+    | IDENTIFIER ":" type_specifier ";" var_list
+type_specifier : BOOLEANTYPE | enum
+
+init_constraint : "INIT" expr
+trans_constraint : "TRANS" expr
+invar_constraint : "INVAR" expr
+
+expr :
+    | NEXT "(" expr ")"
+    | IDENTIFIER
+    | "(" expr ")"
+    | expr IMPLIES expr
+    | expr OR expr
+    | expr AND expr
+    | expr EQ expr
+    | expr NEQ expr
+    | expr IN enum_expr
+    | NOT expr
+
+enum_expr : "{" expr ("," expr)* "}"
+
+ltlspec : "LTLSPEC" ltl
+ltl : 
+    | expr
+    | "(" ltl ")"
+    | ltl OR ltl
+    | ltl IMPLIES ltl
+    | ltl AND ltl
+    | ltl " " U " " ltl | "(" ltl ")" U " " ltl | ltl " " U "(" ltl ")" | "(" ltl ")" U "(" ltl ")"
+    | ltl " " R " " ltl | "(" ltl ")" R " " ltl | ltl " " R "(" ltl ")" | "(" ltl ")" R "(" ltl ")"
+    | G " " ltl | G "(" ltl ")"
+    | F " " ltl | F "(" ltl ")"
+    | X " " ltl | X "(" ltl ")"
+    | NOT ltl
+
+enum : "{" IDENTIFIER ("," IDENTIFIER)* "}"
+IDENTIFIER : /[a-zA-Z_]//[a-zA-Z0-9_\$\#\-]/*
+BOOLEANTYPE : "boolean"
+AND : "&"
+OR : "|"
+IMPLIES : "->"
+EQ : "="
+NEQ : "!="
+NEXT : "next"
+NOT : "!"
+IN : "in"
+G : "G"
+F : "F"
+X : "X"
+U : "U"
+R : "V"
+
