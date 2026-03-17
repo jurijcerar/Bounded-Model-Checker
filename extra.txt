@@ -1,0 +1,49 @@
+For exercise 3 you are to extend your implementation from exercise 2 to support additional features. Include the presentation of your additional features in the notebook `demo.ipynb` or an additional notebook. Here are some ideas for extensions, but you are free to come up with your own:
+
+### Until and Release Operators
+
+Implement the Until and Release operators. The file [`examples/ferrymanuntil.smv`](examples/ferrymanuntil.smv) contains an encoding of the ferryman problem using the Until operator. Come up with an example using the Release operator. Note that [NuSMV](https://nusmv.fbk.eu/userman/v26/nusmv.pdf) uses the symbol `V` to denote the release operator.
+
+### Past Operators (advanced, counts as 2)
+
+Implement (at least) the past operators `Y` (previous), `H` (historrically) and `O` (once).  Come up with examples using past operators.
+
+### Fairness Constraints
+
+Implement fairness constraints as described in the [NuSMV user guide](https://nusmv.fbk.eu/userman/v26/nusmv.pdf). You can find an example in the [`examples`](examples) folder, which describes (faulty) mutual exclusion between two processes. However, due to the fairness constraint the second LTLSPEC, i.e. the _liveness property_, does hold.
+
+### Integer Arithmetic
+
+Implement an integer datatype and arithmetic operations (+, -, *, /, mod). You can find an example of a simple counter that is incremented and reset in [`examples/counter.smv`](examples/counter.smv). An interesting application could be identifying the [Zune Bug](http://bit-player.org/2009/the-zune-bug) by encoding the C program into NuSMV and checking an appropriate LTL formula.
+
+In the second exercise, you will be implementing your own bounded model checker. In exercise 1, you have already encoded single instances of NuSMV specifications into SMT, and you are tasked to automate this process now.
+
+## Exercise 2
+
+Implement a bounded model checker for LTL specifications. Your submission may contain any files, but should contain at least one jupyter-notebook named `demo.ipynb` that demonstrates the usage of your implementation. Your implementation should be able to read a NuSMV-like input file and check if the specification holds for all $(k, l)$-loops up to a given bound $k$.
+
+Your implementation should support at least the following subset of NuSMV:
+- You may assume that there is only one `MODULE main`.
+- Implement boolean variable declarations, e.g. `VAR x: boolean; y: boolean;`, and enum variable declarations, e.g. `VAR proc: {idle, entering, critical, exiting};`.
+- You should implement `INIT`, `TRANS` and `INVAR` declarations, i.e.
+    - `INIT proc = idle`
+    - `TRANS proc = critical -> next(process) = {critical, exiting}`
+    - `INVAR proc = critical -> x & y`
+- Implement LTL specifications, e.g. `LTLSPEC G ! (proc = critical & proc = entering);`. You should support at least the following operators:
+    - `X` (next)
+    - `G` (globally)
+    - `F` (finally)
+    - `!` (not)
+    - `&` (and)
+    - `|` (or)
+    - `->` (implies)
+- Support the following types of expressions:
+    - Variables (anything declared with `VAR`, e.g. `x`, `y`, `proc`)
+    - Constants (TRUE, FALSE, any constant that is part of a enum datatype, e.g. `idle`, `entering`, `critical`, `exiting`)
+    - Comparison operators `=`, `!=` between variables and constants (e.g. `x = y`, `proc != idle`)
+    - Boolean combinations `!`, `&`, `|`, `->` between boolean variables, constants and comparisons (e.g. `x & (y | proc = idle)`)
+    - Inclusion operator `in` between variables and sets (e.g. `proc in {idle, entering}`)
+
+All files from exercise 1 fall into this subset. They have been included in the [`examples`](examples) folder. You can use these files to test your implementation.
+
+For your convenience, I have included a parser for the specified subset of NuSMV. Its usage is demonstrated in the [`parse_demo.ipynb`](parse_demo.ipynb) notebook. A possible first step could be extending the class definitions in [`logic.py`](logic.py) with methods that convert the given constraints into z3 constraints, given parameters $k, l$.
