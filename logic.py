@@ -136,8 +136,10 @@ def Next(expression):
         return NextBool(expression)
     elif isinstance(expression, EnumExpression):
         return NextEnum(expression)
+    elif isinstance(expression, IntExpression):
+        return NextInt(expression)
     else:
-        raise Exception("Next operator must have a boolean or enum expression")
+        raise Exception("Next operator must have a boolean, enum, or integer expression")
 
 
 class Not(BooleanExpression, LTLFormula):
@@ -264,6 +266,35 @@ class In(BooleanExpression):
     def to_z3(self, k, l, i, vars):
         return z3.Or(*[self.left.to_z3(k,l,i, vars)
                    == r.to_z3(k,l,i, vars) for r in self.right])
+
+class Justice(Expression):
+    """A justice (FAIRNESS/JUSTICE) constraint: formula f must hold infinitely often."""
+    def __init__(self, formula):
+        self.formula = formula
+
+    def __repr__(self) -> str:
+        return f"JUSTICE {self.formula}"
+
+    def is_satisfied_in_loop(self, k, l, vars):
+        """In a (k,l)-loop, 'infinitely often' means 'at some step in the loop [l..k]'."""
+        return z3.Or(*[self.formula.to_z3(k, l, j, vars) for j in range(l, k + 1)])
+
+
+class Compassion(Expression):
+    """A compassion constraint: if p holds infinitely often, then q must also hold infinitely often."""
+    def __init__(self, p, q):
+        self.p = p
+        self.q = q
+
+    def __repr__(self) -> str:
+        return f"COMPASSION ({self.p}, {self.q})"
+
+    def is_satisfied_in_loop(self, k, l, vars):
+        """In a (k,l)-loop: if p holds at some loop step, then q must also hold at some loop step."""
+        p_inf = z3.Or(*[self.p.to_z3(k, l, j, vars) for j in range(l, k + 1)])
+        q_inf = z3.Or(*[self.q.to_z3(k, l, j, vars) for j in range(l, k + 1)])
+        return z3.Implies(p_inf, q_inf)
+
 
 class G(LTLFormula):
     def type_check(formula):
@@ -401,3 +432,182 @@ class R(LTLFormula):
                 ) for j in range (l, i)
             ])
         )
+
+
+# ---------------------------------------------------------------------------
+# Past LTL operators
+# ---------------------------------------------------------------------------
+# For a finite path s_0 ... s_k the "predecessor" of step i is:
+#   pred(i) = i - 1   for i > 0
+#   pred(0) = 0       (no previous state; conventionally the formula is False at i=0 for Y)
+
+class Y(LTLFormula):
+    """Yesterday / Previous operator.  Y φ holds at i iff φ held at i-1.
+    At step 0 (the start of the path) Y φ is False by convention."""
+
+    def __init__(self, formula):
+        self.formula = formula
+
+    def __repr__(self) -> str:
+        return "Y " + str(self.formula)
+
+    def to_z3(self, k, l, i, vars):
+        if i == 0:
+            return z3.BoolVal(False)
+        return self.formula.to_z3(k, l, i - 1, vars)
+
+
+class O(LTLFormula):
+    """Once operator.  O φ holds at i iff φ held at some step j ≤ i."""
+
+    def __init__(self, formula):
+        self.formula = formula
+
+    def __repr__(self) -> str:
+        return "O " + str(self.formula)
+
+    def to_z3(self, k, l, i, vars):
+        return z3.Or(*[self.formula.to_z3(k, l, j, vars) for j in range(0, i + 1)])
+
+
+class H(LTLFormula):
+    """Historically operator.  H φ holds at i iff φ held at all steps j ≤ i."""
+
+    def __init__(self, formula):
+        self.formula = formula
+
+    def __repr__(self) -> str:
+        return "H " + str(self.formula)
+
+    def to_z3(self, k, l, i, vars):
+        return z3.And(*[self.formula.to_z3(k, l, j, vars) for j in range(0, i + 1)])
+
+
+# ---------------------------------------------------------------------------
+# Integer expressions
+# ---------------------------------------------------------------------------
+
+class IntExpression(Expression):
+    """Base class for integer-valued expressions."""
+    pass
+
+
+class IntIdentifier(IntExpression):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self) -> str:
+        return self.name
+
+    def to_z3(self, k, l, i, vars):
+        return vars[f'{self.name}{i}']
+
+
+class IntLiteral(IntExpression):
+    def __init__(self, value: int):
+        self.value = value
+
+    def __repr__(self) -> str:
+        return str(self.value)
+
+    def to_z3(self, k, l, i, vars):
+        return z3.IntVal(self.value)
+
+
+class IntAdd(IntExpression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self) -> str:
+        return f"({self.left} + {self.right})"
+
+    def to_z3(self, k, l, i, vars):
+        return self.left.to_z3(k, l, i, vars) + self.right.to_z3(k, l, i, vars)
+
+
+class IntSub(IntExpression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self) -> str:
+        return f"({self.left} - {self.right})"
+
+    def to_z3(self, k, l, i, vars):
+        return self.left.to_z3(k, l, i, vars) - self.right.to_z3(k, l, i, vars)
+
+
+class IntMul(IntExpression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self) -> str:
+        return f"({self.left} * {self.right})"
+
+    def to_z3(self, k, l, i, vars):
+        return self.left.to_z3(k, l, i, vars) * self.right.to_z3(k, l, i, vars)
+
+
+class IntDiv(IntExpression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self) -> str:
+        return f"({self.left} / {self.right})"
+
+    def to_z3(self, k, l, i, vars):
+        return self.left.to_z3(k, l, i, vars) / self.right.to_z3(k, l, i, vars)
+
+
+class IntMod(IntExpression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self) -> str:
+        return f"({self.left} mod {self.right})"
+
+    def to_z3(self, k, l, i, vars):
+        return self.left.to_z3(k, l, i, vars) % self.right.to_z3(k, l, i, vars)
+
+
+class NextInt(IntExpression):
+    """next() applied to an integer expression."""
+    def __init__(self, expression):
+        self.expression = expression
+
+    def __repr__(self) -> str:
+        return f"next({self.expression})"
+
+    def to_z3(self, k, l, i, vars):
+        return self.expression.to_z3(k, l, Expression.succ(k, l, i), vars)
+
+
+def NextArith(expression):
+    """Factory: wraps an integer expression in NextInt."""
+    return NextInt(expression)
+
+
+# Integer comparison — produces a BooleanExpression
+class IntCmp(BooleanExpression, LTLFormula):
+    def __init__(self, left, op: str, right):
+        self.left = left
+        self.op = op
+        self.right = right
+
+    def __repr__(self) -> str:
+        return f"({self.left} {self.op} {self.right})"
+
+    def to_z3(self, k, l, i, vars):
+        lv = self.left.to_z3(k, l, i, vars)
+        rv = self.right.to_z3(k, l, i, vars)
+        match self.op:
+            case "=":  return lv == rv
+            case "!=": return lv != rv
+            case "<":  return lv < rv
+            case "<=": return lv <= rv
+            case ">":  return lv > rv
+            case ">=": return lv >= rv

@@ -1,68 +1,126 @@
 %import common.WS
 %ignore WS
 
-COMMENT : "--" /.*?/ "\n"
+COMMENT : "--" /[^\n]*/  "\n"
 %ignore COMMENT
 
 start : "MODULE" "main" (statement)*
-statement : 
+
+statement :
     | "VAR" var_list
     | init_constraint
     | trans_constraint
     | invar_constraint
     | ltlspec
+    | fairness_constraint
 
-var_list : 
+fairness_constraint :
+    | "FAIRNESS" bool_expr [";"]
+    | "JUSTICE"  bool_expr [";"]
+    | "COMPASSION" "(" bool_expr "," bool_expr ")" [";"]
+
+var_list :
     | IDENTIFIER ":" type_specifier ";"
     | IDENTIFIER ":" type_specifier ";" var_list
-type_specifier : BOOLEANTYPE | enum
 
-init_constraint : "INIT" expr
-trans_constraint : "TRANS" expr
-invar_constraint : "INVAR" expr
+type_specifier :
+    | BOOLEANTYPE
+    | INTTYPE
+    | enum
+    | INT_LITERAL ".." INT_LITERAL
 
-expr :
-    | NEXT "(" expr ")"
+init_constraint  : "INIT"  bool_expr
+trans_constraint : "TRANS" bool_expr
+invar_constraint : "INVAR" bool_expr
+
+bool_expr :
+    | bool_atom
+    | "(" bool_expr ")"
+    | NOT bool_expr
+    | bool_expr AND     bool_expr
+    | bool_expr OR      bool_expr
+    | bool_expr IMPLIES bool_expr
+    | arith_expr EQ  arith_expr
+    | arith_expr NEQ arith_expr
+    | arith_expr LT  arith_expr
+    | arith_expr LE  arith_expr
+    | arith_expr GT  arith_expr
+    | arith_expr GE  arith_expr
+    | enum_expr_lhs IN enum_set
+
+bool_atom :
     | IDENTIFIER
-    | "(" expr ")"
-    | expr IMPLIES expr
-    | expr OR expr
-    | expr AND expr
-    | expr EQ expr
-    | expr NEQ expr
-    | expr IN enum_expr
-    | NOT expr
+    | TRUE_KW
+    | FALSE_KW
 
-enum_expr : "{" expr ("," expr)* "}"
-
-ltlspec : "LTLSPEC" ltl
-ltl : 
-    | expr
-    | "(" ltl ")"
-    | ltl OR ltl
-    | ltl IMPLIES ltl
-    | ltl AND ltl
-    | ltl " " U " " ltl | "(" ltl ")" U " " ltl | ltl " " U "(" ltl ")" | "(" ltl ")" U "(" ltl ")"
-    | ltl " " R " " ltl | "(" ltl ")" R " " ltl | ltl " " R "(" ltl ")" | "(" ltl ")" R "(" ltl ")"
-    | G " " ltl | G "(" ltl ")"
-    | F " " ltl | F "(" ltl ")"
-    | X " " ltl | X "(" ltl ")"
-    | NOT ltl
+arith_expr :
+    | INT_LITERAL
+    | IDENTIFIER
+    | NEXT "(" arith_expr ")"
+    | "(" arith_expr ")"
+    | arith_expr PLUS   arith_expr
+    | arith_expr MINUS  arith_expr
+    | arith_expr TIMES  arith_expr
+    | arith_expr DIVIDE arith_expr
+    | arith_expr MOD    arith_expr
 
 enum : "{" IDENTIFIER ("," IDENTIFIER)* "}"
-IDENTIFIER : /[a-zA-Z_]//[a-zA-Z0-9_\$\#\-]/*
-BOOLEANTYPE : "boolean"
-AND : "&"
-OR : "|"
-IMPLIES : "->"
-EQ : "="
-NEQ : "!="
-NEXT : "next"
-NOT : "!"
-IN : "in"
-G : "G"
-F : "F"
-X : "X"
-U : "U"
-R : "V"
 
+enum_expr_lhs :
+    | IDENTIFIER
+    | NEXT "(" IDENTIFIER ")"
+
+enum_set : "{" IDENTIFIER ("," IDENTIFIER)* "}"
+
+ltlspec : "LTLSPEC" ltl
+
+ltl :
+    | bool_expr
+    | "(" ltl ")"
+    | NOT ltl
+    | ltl AND     ltl
+    | ltl OR      ltl
+    | ltl IMPLIES ltl
+    | G ltl
+    | F ltl
+    | X ltl
+    | Y ltl
+    | H ltl
+    | O_OP ltl
+    | ltl U ltl
+    | ltl R ltl
+
+IDENTIFIER  : /[a-zA-Z_][a-zA-Z0-9_$#\-]*/
+INT_LITERAL : /[0-9]+/
+
+BOOLEANTYPE : "boolean"
+INTTYPE     : "integer"
+TRUE_KW     : "TRUE"
+FALSE_KW    : "FALSE"
+
+AND     : "&"
+OR      : "|"
+IMPLIES : "->"
+NOT     : "!"
+EQ      : "="
+NEQ     : "!="
+LT      : "<"
+LE      : "<="
+GT      : ">"
+GE      : ">="
+IN      : "in"
+NEXT    : "next"
+PLUS    : "+"
+MINUS   : "-"
+TIMES   : "*"
+DIVIDE  : "/"
+MOD     : "mod"
+
+G    : "G"
+F    : "F"
+X    : "X"
+U    : "U"
+R    : "V"
+Y    : "Y"
+H    : "H"
+O_OP : "O"

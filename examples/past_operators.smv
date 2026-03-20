@@ -1,0 +1,48 @@
+-- Past operators example: alarm system
+--
+-- A door sensor triggers an alarm. Once the door has been opened (sensor=TRUE)
+-- the alarm sounds. We check properties using past LTL operators.
+--
+-- Past operators:
+--   Y φ  (Yesterday)    φ held at the previous step; FALSE at step 0
+--   O φ  (Once)         φ held at some step in the past (including now)
+--   H φ  (Historically) φ held at every step up to and including now
+--
+-- Property 1 (HOLDS):
+--   G (alarm -> O sensor)
+--   "If the alarm is on, the sensor was triggered at some earlier point."
+--
+-- Property 2 (COUNTEREXAMPLE expected):
+--   G (alarm -> Y sensor)
+--   "If the alarm is on, the sensor was triggered in the PREVIOUS step."
+--   Violated: the alarm stays on after sensor goes back to FALSE.
+--
+-- Property 3 (HOLDS):
+--   G (H !sensor -> !alarm)
+--   "If the sensor has never been triggered, the alarm is off."
+
+MODULE main
+VAR
+    sensor : boolean;
+    alarm  : boolean;
+
+INIT sensor = FALSE
+INIT alarm  = FALSE
+
+-- Sensor can turn on or off freely
+TRANS next(sensor) = TRUE | next(sensor) = FALSE
+
+-- Alarm turns on when sensor fires; stays on once triggered
+TRANS sensor       -> next(alarm) = TRUE
+TRANS !sensor & alarm  -> next(alarm) = TRUE
+TRANS !sensor & !alarm -> next(alarm) = FALSE
+
+-- Property 1 (HOLDS): alarm only after sensor was once triggered
+LTLSPEC G (alarm -> O sensor)
+
+-- Property 2 (COUNTEREXAMPLE): alarm implies sensor was true LAST step
+-- Violated once alarm stays on but sensor is now FALSE
+LTLSPEC G (alarm -> Y sensor)
+
+-- Property 3 (HOLDS): if sensor has never fired, alarm is off
+LTLSPEC G (H !sensor -> !alarm)

@@ -1,0 +1,38 @@
+-- Release operator example: light switch
+--
+-- A simple light switch model. The light starts off and can only turn on
+-- when the switch is pressed (switch = TRUE). The switch can be pressed
+-- at any time.
+--
+-- We use the Release operator (V) to express safety properties.
+-- Recall: (p V q) means q holds at every step UP TO AND INCLUDING
+-- the first step where p holds. If p never holds, q holds forever.
+--
+-- Property 1 (COUNTEREXAMPLE expected):
+--   G (switch V (light = on))
+--   "The light stays on until the switch is flipped" -- violated because
+--   the light starts off and switch may never be pressed.
+--
+-- Property 2 (HOLDS):
+--   G (switch V (light = off | switch))
+--   "The light stays off until the switch is pressed."
+--   Since the light can only turn on when switch=TRUE, this always holds.
+
+MODULE main
+VAR
+    switch : boolean;
+    light  : {on, off};
+
+INIT light = off
+
+TRANS light = off & switch  -> next(light) = on
+TRANS light = off & !switch -> next(light) = off
+TRANS light = on            -> next(light) = on
+
+-- Property 1: the light is always on, or the switch releases it.
+-- COUNTEREXAMPLE: at step 0 the light is off and switch may be FALSE.
+LTLSPEC G (switch V (light = on))
+
+-- Property 2: until switch is pressed, light stays off.
+-- HOLDS: the model only allows light=on if switch was TRUE at that step.
+LTLSPEC G (switch V (light = off))

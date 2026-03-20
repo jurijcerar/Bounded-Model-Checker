@@ -1,0 +1,59 @@
+-- The Zune Bug (integer arithmetic example)
+--
+-- The Microsoft Zune 30GB froze on December 31, 2008 due to a bug in the
+-- firmware's day-of-year to year conversion routine. The C loop was:
+--
+--   year = 1980;
+--   while (days > 365) {
+--       if (IsLeapYear(year)) {
+--           if (days > 366) { days -= 366; year += 1; }
+--           else { break; }   // <-- BUG: no else branch decrement when days==366
+--       } else {
+--           days -= 365; year += 1;
+--       }
+--   }
+--
+-- On Dec 31 2008: days=366, IsLeapYear(2008)=TRUE, days is NOT > 366,
+-- so the inner else-break fires... but doesn't decrement days or year.
+-- The loop spins forever with days=366, year=2008.
+--
+-- We model the loop body as a transition system.
+-- days starts at 366 (Dec 31 of a leap year). is_leap starts TRUE.
+--
+-- LTLSPEC 1 (COUNTEREXAMPLE expected): days eventually leaves 366.
+--   G F (days != 366)  -- this should hold for a correct loop, but DOESN'T.
+--
+-- LTLSPEC 2 (HOLDS): the buggy state is absorbing -- days=366 & is_leap stays.
+--   G (is_leap & days = 366 -> X (days = 366))
+
+MODULE main
+VAR
+    days    : 1 .. 400;
+    is_leap : boolean;
+
+INIT days    = 366
+INIT is_leap = TRUE
+
+-- Buggy loop body:
+-- If leap year and days == 366: do nothing (the bug -- infinite loop)
+TRANS is_leap & days = 366 -> next(days) = days
+
+-- If leap year and days > 366: subtract 366
+TRANS is_leap & days > 366 -> next(days) = days - 366
+
+-- If not a leap year and days > 365: subtract 365
+TRANS !is_leap & days > 365 -> next(days) = days - 365
+
+-- Termination case: days <= 365 (loop exits), keep days
+TRANS days <= 365 -> next(days) = days
+
+-- is_leap stays the same for simplicity (we only model the stuck state)
+TRANS next(is_leap) = is_leap
+
+-- LTLSPEC 1: The system should eventually escape days=366.
+-- COUNTEREXAMPLE expected: the bug traps the system at days=366 forever.
+LTLSPEC G F (days != 366)
+
+-- LTLSPEC 2: Confirms the bug -- if stuck at days=366 with is_leap, stays there.
+-- This HOLDS.
+LTLSPEC G (is_leap & days = 366 -> X (days = 366))
